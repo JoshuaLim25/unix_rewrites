@@ -3,12 +3,15 @@ package main
 import (
 	"bufio"
 	"errors"
+	"fmt"
+	"io/fs"
 	"log"
 	"os"
+	"strings"
 )
 
-func isDir(path string) bool {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+func isDirectory(path string) bool {
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		return false
 	} else {
 		return true
@@ -21,32 +24,31 @@ func parseDirents(path string) {
 		log.Fatalf("Error reading directory: %e", err)
 	}
 
-	for i, dirent := range dirents {
-		log.Println()
+	for _, dirent := range dirents {
+		fmt.Println()
 		info, err := dirent.Info()
 		if err != nil {
 			log.Fatalf("Couldn't read dirent: %e\n", err)
 		}
-
 		// log.Printf("Dirent %v has the following data:\n%v\n", i, info)
-		log.Printf("Dirent %d: \n%v\n\n", i, info.Name())
+		fmt.Printf("%v\n", info.Name())
 	}
 }
 func parseDirentsRecursive(path string) {
+	// for ls -R
 	dirents, err := os.ReadDir(path)
 	if err == nil {
 		log.Fatalf("Error reading directory: %e", err)
 	}
 
 	for i, dirent := range dirents {
-		log.Println()
 		info, err := dirent.Info()
 		if err != nil {
 			log.Fatalf("Couldn't read dirent: %e\n", err)
 		}
 
 		// log.Printf("Dirent %v has the following data:\n%v\n", i, info)
-		log.Printf("Dirent %d: \n%v\n\n", i, info.Name())
+		fmt.Printf("%v\n\n", i, info.Name())
 		// Recursively search
 		if info.IsDir() {
 			parseDirentsRecursive(info.Name())
@@ -56,7 +58,7 @@ func parseDirentsRecursive(path string) {
 
 func ls(path string) {
 	// 1. Input validation
-	if !isDir(path) {
+	if !isDirectory(path) {
 		log.Fatal("No valid directory given.")
 	}
 	// TODO: check special cases:
@@ -78,24 +80,34 @@ func ls(path string) {
 }
 
 func main() {
-	args := make([]string, 3)
+	fmt.Println("Enter command (ls):")
+	// NOTE: fmt.Scan and its relatives are kinda ass. Use bufio.Scanner or bufio.Reader.
+	// Scanner is higher level; reads by line as a default, predictable input
+	// Reader is lower level; reads by line as a default, large and/or unpredictable input
 	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Split(bufio.ScanWords)
-	for scanner.Scan() {
-		args = append(args, scanner.Text())
-		log.Printf("args: %v\n", args)
-		if len(args) <= 0 {
-			log.Fatal("Error: expected more than one argument.")
-		} else if len(args) == 1 {
-			ls(".")
-		} else if len(args) == 2 { // flag given
-			// TODO:
-			panic("Unimplemented")
-		} else if len(args) == 3 {
-			// TODO:
-			panic("Unimplemented")
-		} else {
-			log.Fatal("Error: received more than 3 arguments.")
-		}
+	if !scanner.Scan() { // NOTE: keeps reading till EOF (ctl+d)
+		log.Fatal("No input provided, try again.")
 	}
+	line := scanner.Text()
+	args := strings.Split(strings.TrimSpace(line), " ") // returns []string
+	if len(args) > 3 || args[0] != "ls" {
+		log.Fatal("Expected command of the from `ls <FLAGS> <PATH>")
+	}
+
+	// Here, have `ls blah blah` guaranteed
+	// Is 2nd token a flag or path?
+	second := args[1]
+	if strings.HasPrefix(second, "-") {
+		// its a flag, process it
+		// TODO:
+		log.Fatal("Unimplemented")
+	} else {
+		// its a path
+		ls(second)
+		os.Exit(1) // DONE
+	}
+	// If we got here, it's in the form `ls -a .`
+	third := args[2]
+	ls(third)
+	os.Exit(1) // DONE
 }
