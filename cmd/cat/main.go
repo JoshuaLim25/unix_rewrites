@@ -13,23 +13,7 @@ func printUsage() {
 	log.Fatal("Usage: cat [OPTION]... [FILE]...\n")
 }
 
-func readFiles1(files []string) {
-	for _, file := range files {
-		fp, err := os.Open(file)
-		if err != nil {
-			log.Fatalf("Error reading file: %v\n", err)
-		}
-		defer fp.Close()
-		scanner := bufio.NewScanner(fp)
-		scanner.Split(bufio.ScanLines)
-		for scanner.Scan() {
-			line := scanner.Text()
-			fmt.Fprintln(os.Stdout, line)
-		}
-	}
-}
-
-func readFiles2(files []string) {
+func readFiles(files []string) {
 	for _, file := range files {
 		fp, err := os.Open(file)
 		defer fp.Close()
@@ -66,14 +50,15 @@ func main() {
 				log.Fatalf("Error reading file: %v\n", err)
 			}
 			file := []string{arg2}
-			readFiles2(file)
+			readFiles(file)
 		}
 	default:
-		// Two opts: of form `cat -c files` or `cat files`
+		// Two opts: of form `cat file1 file2` or `cat -flags files`
 		arg2 := os.Args[1]
 		if strings.HasPrefix(arg2, "-") {
 			log.Fatal("Unimplemented: handle flag")
 		}
-		readFiles2(os.Args[1:])
+		files := os.Args[1:]
+		readFiles(files)
 	}
 }
