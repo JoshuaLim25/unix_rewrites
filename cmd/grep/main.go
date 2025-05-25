@@ -2,48 +2,80 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"errors"
 	"log"
 	"os"
 	"strings"
+	// "flag"
+	"fmt"
+	// "regexp"
 )
 
-/*
-grep -iRw ++ .
-*/
+// Helpers
+func PrintUsage() {
+	log.Fatal("Usage: grep [OPTION]... PATTERNS [FILE]...")
+}
 
-func patternMatch(path, pattern string) {
-	fp, err := os.OpenFile(path, os.O_RDONLY, 444)
-	if err != nil {
-		log.Fatalf("Error opening file: %v\n", err)
+// Typedefs
+type Stack []rune // could make generic, also no need to tho
+type Pattern string
+
+// Interface impls and methods
+// NOTE: errors.New() should be used instead
+// func (s *Stack) Error() string {
+// 	return fmt.Sprintf("Error popping from empty stack")
+// }
+
+func (s *Stack) Push(elem rune) {
+	*s = append(*s, elem)
+}
+
+func (s *Stack) Pop() (rune, error) {
+	if len(*s) == 0 {
+		// return 0, s.Error() // WARN: can't do this, would need to return 0, s
+		return 0, errors.New("Error popping from empty stack")
 	}
-	defer fp.Close()
+	last := (*s)[len(*s)-1]
+	*s = (*s)[:len(*s)-1]
+	return last, nil
+}
 
+
+// Search thru file for a match and return matched line
+func PatternMatch(pat Pattern, file string) ([]string, error) {
+	// if pat.IsValid() {
+	//   return nil, errors.New("Invalid regex provided.")
+	// }
+	fp, err := os.Open(file)
+	if err != nil {
+	  return nil, err
+	}
+	matchedLines := []string{}
 	scanner := bufio.NewScanner(fp)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.Contains(line, pattern) {
-			fmt.Println(line)
+		if strings.Contains(line, string(pat)) {
+			matchedLines = append(matchedLines, line)
 		}
+	}
+	return matchedLines, nil
+}
+
+func ProcessFiles(pat Pattern, files []string) {
+	for _, file := range files {
+		matches, _ := PatternMatch(pat, file)
+		fmt.Println(matches)
 	}
 }
 
+
 func main() {
-	numArgs := len(os.Args)
-	fmt.Println(os.Args)
-	fmt.Printf("Num args given: %d\n", numArgs)
-	if numArgs <= 1 || numArgs > 4 || os.Args[0] != "./g" {
-		log.Fatal("Expected argument in the form `grep <flags> <pattern> <path>`")
+	files := []string{}
+	testPattern := Pattern("Bob")
+	for i := 1; i <= 10; i++ {
+		files = append(files, fmt.Sprintf("test-%d.txt", i))
 	}
-
-	if numArgs == 2 {
-		// TODO: flag or path?
-		if strings.HasPrefix(os.Args[1], "-") {
-		}
-		log.Fatal("Unimplemented")
-	}
-
-	patternMatch("test.txt", "Alice")
-	fmt.Println("Hi i still work :)")
+	fmt.Printf("DEBUGPRINT[72]: main.go:77: files=%+v\n", files)
+	ProcessFiles(testPattern, files)
 }
